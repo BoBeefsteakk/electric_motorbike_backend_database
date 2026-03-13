@@ -1,119 +1,128 @@
-const express = require("express");
-const bcrypt = require("bcrypt");
-const cors = require("cors");
+const express    = require("express");
+const bcrypt     = require("bcrypt");
+const cors       = require("cors");
+const mysql      = require("mysql2");
 require("dotenv").config();
 
-const productRoutes = require("./routes/product.routes");
-const authRoutes = require("./routes/auth.routes");
-const storeRoutes = require("./routes/store.routes");
-const voucherRoutes = require("./routes/voucher.routes");
-const carRoutes = require("./routes/car.routes");
+/* ── Routes ── */
+const productRoutes   = require("./routes/product.routes");
+const authRoutes      = require("./routes/auth.routes");
+const storeRoutes     = require("./routes/store.routes");
+const voucherRoutes   = require("./routes/voucher.routes");
+const carRoutes       = require("./routes/car.routes");
+const accessoryRoutes = require("./routes/accessory.routes");
 
 const app = express();
 
-const mysql = require("mysql2");
-
-const db = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "123456",
-  database: "myapp",
+/* ── DB — dùng Pool thay createConnection ──
+   createConnection sẽ crash server nếu connection bị drop (timeout, mất mạng).
+   Pool tự reconnect và quản lý nhiều connection đồng thời. ── */
+const db = mysql.createPool({
+  host:               process.env.DB_HOST     || "localhost",
+  user:               process.env.DB_USER     || "root",
+  password:           process.env.DB_PASSWORD || "123456",
+  database:           process.env.DB_NAME     || "myapp",
+  waitForConnections: true,
+  connectionLimit:    10,
+  queueLimit:         0,
 });
 
-db.connect((err) => {
+/* Kiểm tra kết nối lúc khởi động */
+db.getConnection((err, conn) => {
   if (err) {
-    console.log("Lỗi kết nối DB:", err);
-  } else {
-    console.log("Đã kết nối MySQL");
+    console.error("❌ Lỗi kết nối DB:", err.message);
+    process.exit(1);
   }
+  console.log("✅ Đã kết nối MySQL");
+  conn.release();
 });
 
+/* ── Middleware ── */
 app.use(cors());
 app.use(express.json());
-
 app.use("/images", express.static("public/images"));
 
-app.use("/api/auth", authRoutes);
-app.use("/api/products", productRoutes); 
-app.use("/api/stores", storeRoutes);
-app.use("/api/vouchers", voucherRoutes);
-app.use("/cars", carRoutes);
+/* ── API Routes ── */
+app.use("/api/auth",        authRoutes);
+app.use("/api/products",    productRoutes);
+app.use("/api/stores",      storeRoutes);
+app.use("/api/vouchers",    voucherRoutes);
+app.use("/api/cars",        carRoutes);        // fix: /cars → /api/cars cho nhất quán
+app.use("/api/accessories", accessoryRoutes);
 
+/* ── Auth (legacy — giữ lại nếu app đang dùng, nên chuyển vào authRoutes sau) ── */
 app.post("/register", async (req, res) => {
   const { account, password } = req.body;
-
+  if (!account?.trim() || !password?.trim())
+    return res.status(400).json({ message: "Thiếu thông tin" });
   try {
-    const hashedPassword = await bcrypt.hash(password, 10);
-
+    const hashed = await bcrypt.hash(password, 10);
     db.query(
       "INSERT INTO users (account, password) VALUES (?, ?)",
-      [account, hashedPassword],
-      (err, result) => {
+      [account, hashed],
+      (err) => {
         if (err) {
-          console.log(err);
+          if (err.code === "ER_DUP_ENTRY")
+            return res.status(409).json({ message: "Tài khoản đã tồn tại" });
+          console.error(err);
           return res.status(500).json({ message: "Lỗi tạo user" });
         }
-
-        res.json({ message: "Đăng ký thành công" });
+        res.status(201).json({ message: "Đăng ký thành công" });
       }
     );
-  } catch (error) {
-    console.log(error);
+  } catch (e) {
+    console.error(e);
     res.status(500).json({ message: "Lỗi server" });
   }
 });
 
 app.post("/login", (req, res) => {
   const { account, password } = req.body;
+  if (!account?.trim() || !password?.trim())
+    return res.status(400).json({ message: "Thiếu thông tin" });
 
-  db.query(
-    "SELECT * FROM users WHERE account = ?",
-    [account],
-    async (err, results) => {
-      if (err) {
-        console.log(err);
-        return res.status(500).json({ message: "Lỗi server" });
-      }
+  db.query("SELECT * FROM users WHERE account = ?", [account], async (err, results) => {
+    if (err) { console.error(err); return res.status(500).json({ message: "Lỗi server" }); }
+    if (results.length === 0)
+      return res.status(401).json({ message: "Sai tài khoản hoặc mật khẩu" });
 
-      if (results.length === 0) {
-        return res.status(401).json({ message: "Sai tài khoản hoặc mật khẩu" });
-      }
+    const isMatch = await bcrypt.compare(password, results[0].password);
+    if (!isMatch)
+      return res.status(401).json({ message: "Sai tài khoản hoặc mật khẩu" });
 
-      const user = results[0];
-      const isMatch = await bcrypt.compare(password, user.password);
-
-      if (!isMatch) {
-        return res.status(401).json({ message: "Sai tài khoản hoặc mật khẩu" });
-      }
-
-      res.json({ message: "Login thành công" });
-    }
-  );
+    res.json({ message: "Login thành công" });
+  });
 });
 
-// ── ĐĂNG KÝ TƯ VẤN ──
+/* ── Đăng ký tư vấn ── */
 app.post("/api/consult", (req, res) => {
   const { fullName, phone, email, carType } = req.body;
- 
-  if (!fullName || !phone || !email) {
+  if (!fullName?.trim() || !phone?.trim() || !email?.trim())
     return res.status(400).json({ message: "Vui lòng điền đầy đủ thông tin" });
-  }
- 
+
   db.query(
     "INSERT INTO consults (full_name, phone, email, car_type) VALUES (?, ?, ?, ?)",
-    [fullName, phone, email, carType || ""],
-    (err, result) => {
-      if (err) {
-        console.log(err);
-        return res.status(500).json({ message: "Lỗi lưu dữ liệu" });
-      }
-      res.json({ message: "Đăng ký tư vấn thành công" });
+    [fullName.trim(), phone.trim(), email.trim(), carType || ""],
+    (err) => {
+      if (err) { console.error(err); return res.status(500).json({ message: "Lỗi lưu dữ liệu" }); }
+      res.status(201).json({ message: "Đăng ký tư vấn thành công" });
     }
   );
 });
 
-const PORT = process.env.PORT || 5000;
+/* ── 404 handler ── */
+app.use((req, res) => {
+  res.status(404).json({ message: `Route ${req.method} ${req.path} không tồn tại` });
+});
 
+/* ── Global error handler ── */
+app.use((err, req, res, next) => {
+  console.error("❌ Unhandled error:", err);
+  res.status(500).json({ message: "Lỗi server không xác định" });
+});
+
+/* ── Start ── */
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+  console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
