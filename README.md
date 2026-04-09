@@ -51,7 +51,7 @@ Sau đó chỉnh sửa các biến môi trường trong file `.env` theo cấu h
 
 * Ở mục **Default Target Schema**
 * Nhấn **New**
-* Tạo schema mới (ví dụ: `login_register_db`)
+* Tạo schema mới (ví dụ: `fulldb`)
 * Chọn schema vừa tạo
 
 ---
