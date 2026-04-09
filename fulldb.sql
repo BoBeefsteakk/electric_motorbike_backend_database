@@ -16,6 +16,32 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
+-- Table structure for table `accessory`
+--
+
+DROP TABLE IF EXISTS `accessory`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `accessory` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `price` bigint NOT NULL,
+  `image` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `accessory`
+--
+
+LOCK TABLES `accessory` WRITE;
+/*!40000 ALTER TABLE `accessory` DISABLE KEYS */;
+INSERT INTO `accessory` VALUES (1,'Áo Polo Vinfast VF5 Thêu Hoa',350000,'images/accessory/Ao Polo Vinfast VF 5 Thêu Hoa.jpg'),(2,'Bọc vô lăng VF3',250000,'images/accessory/Bọc vô lăng VF 3.jpg'),(3,'Bộ thanh ngang giá nóc VF3',1200000,'images/accessory/Bộ thanh ngang giá nóc VF 3.jpg'),(4,'Camera lùi VF3',900000,'images/accessory/Camera lùi VF 3.jpg'),(5,'Gói film cách nhiệt dán trần Vinfast VF7',1500000,'images/accessory/Gói Film cách nhiệt dán trần Vinfast VF 7.jpg'),(6,'Khăn lụa cao cấp Vinfast',300000,'images/accessory/Khăn lụa cao cấp Vinfast.jpg'),(7,'Mô hình xe Vinfast VF3',450000,'images/accessory/Mô hình xe Vinfast VF3.jpg'),(8,'Mũ lưỡi trai thêu hoa VF5',200000,'images/accessory/Mũ lưỡi trai thêu hoa VF 5.jpg'),(9,'Sạc tại nhà 3KW',3500000,'images/accessory/Sạc tại nhà 3KW.jpg'),(10,'Tấm che pin cao áp Vinfast Nerio Green',600000,'images/accessory/Tấm che pin cao áp Vinfast Nerio Green.jpg'),(11,'Thanh ngang giá nóc Vinfast VF8',1400000,'images/accessory/Thanh ngang giá nóc Vinfast VF 8.jpg'),(12,'VF5 Tấm che pin cao áp',500000,'images/accessory/VF 5 Tấm che pin cao áp.jpg'),(13,'VF6 Tấm che pin cao áp',520000,'images/accessory/VF 6 Tấm che pin cao áp.jpg'),(14,'VF7 Tấm che pin cao áp',540000,'images/accessory/VF 7 Tấm Che Pin Cao Áp.jpg'),(15,'VF8 Tấm che pin cao áp',560000,'images/accessory/VF 8 Tấm che pin cao áp.jpg'),(16,'VF9 Tấm che pin cao áp',600000,'images/accessory/VF 9 Tấm che pin cao áp.jpg'),(17,'Bình giữ nhiệt VF7',180000,'images/accessory/Bình giữ nhiệt VF 7.jpg');
+/*!40000 ALTER TABLE `accessory` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `cars`
 --
 
@@ -44,6 +70,41 @@ INSERT INTO `cars` VALUES (1,'Vinfast EC Van',285000000,'car/Vinfast EC Van.jpg'
 UNLOCK TABLES;
 
 --
+-- Table structure for table `cart`
+--
+
+DROP TABLE IF EXISTS `cart`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `cart` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` varchar(100) NOT NULL,
+  `product_id` varchar(100) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `price` bigint NOT NULL,
+  `image` varchar(500) DEFAULT NULL,
+  `quantity` int NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `color_id` int DEFAULT NULL,
+  `color_name` varchar(50) DEFAULT NULL,
+  `color_value` varchar(20) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_cart_item` (`user_id`,`product_id`),
+  UNIQUE KEY `uniq_cart_item` (`user_id`,`product_id`,`color_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `cart`
+--
+
+LOCK TABLES `cart` WRITE;
+/*!40000 ALTER TABLE `cart` DISABLE KEYS */;
+/*!40000 ALTER TABLE `cart` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `consults`
 --
 
@@ -58,7 +119,7 @@ CREATE TABLE `consults` (
   `car_type` varchar(100) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -67,6 +128,7 @@ CREATE TABLE `consults` (
 
 LOCK TABLES `consults` WRITE;
 /*!40000 ALTER TABLE `consults` DISABLE KEYS */;
+INSERT INTO `consults` VALUES (1,'Thang2s','0388309023','Hshsjs','Cao cấp','2026-03-16 03:17:57');
 /*!40000 ALTER TABLE `consults` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -95,6 +157,68 @@ LOCK TABLES `motorbike` WRITE;
 /*!40000 ALTER TABLE `motorbike` DISABLE KEYS */;
 INSERT INTO `motorbike` VALUES (1,'VinFast Evo 200 Lite',22000000,'motorbike/VinFast Evo 200 Lite.jpg','pho_thong'),(2,'VinFast Evo 200',22000000,'motorbike/VinFast Evo 200.jpg','pho_thong'),(3,'VinFast Evo Grand Lite',22000000,'motorbike/VinFast Evo Grand Lite.png','pho_thong'),(4,'VinFast Evo Grand',22000000,'motorbike/VinFast Evo Grand.jpg','pho_thong'),(5,'Vinfast Evo Lite Neo',22000000,'motorbike/Vinfast Evo Lite Neo.jpg','pho_thong'),(6,'VinFast Evo Neo',22000000,'motorbike/VinFast Evo Neo.jpg','pho_thong'),(7,'VinFast Evo',22000000,'motorbike/VinFast Evo.jpg','pho_thong'),(8,'VinFast Feliz 2025',30000000,'motorbike/VinFast Feliz 2025.jpg','trung_cap'),(9,'VinFast Feliz II',30000000,'motorbike/VinFast Feliz II.png','trung_cap'),(10,'VinFast Feliz Lite',30000000,'motorbike/VinFast Feliz Lite.png','trung_cap'),(11,'VinFast Feliz Neo',30000000,'motorbike/VinFast Feliz Neo.jpg','trung_cap'),(12,'VinFast Feliz S',30000000,'motorbike/VinFast Feliz S.jpg','trung_cap'),(13,'VinFast Flazz',25000000,'motorbike/VinFast Flazz.jpg','pho_thong'),(14,'VinFast Klara Neo',39000000,'motorbike/VinFast Klara Neo.jpg','trung_cap'),(15,'VinFast Motio',25000000,'motorbike/VinFast Motio.jpg','pho_thong'),(16,'Vinfast Theon S',69000000,'motorbike/Vinfast Theon S.jpg','cao_cap'),(17,'VinFast Vento Neo',27000000,'motorbike/VinFast Vento Neo.jpg','cao_cap'),(18,'Vinfast Vento S',27000000,'motorbike/Vinfast Vento S.jpg','cao_cap'),(19,'VinFast Vero X',25000000,'motorbike/VinFast Vero X.jpg','cao_cap'),(20,'Vinfast Viper',42000000,'motorbike/Vinfast Viper.jpg','cao_cap'),(21,'VinFast Zgoo',25000000,'motorbike/VinFast Zgoo.jpg','pho_thong');
 /*!40000 ALTER TABLE `motorbike` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `order_items`
+--
+
+DROP TABLE IF EXISTS `order_items`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `order_items` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `order_id` varchar(50) NOT NULL,
+  `product_id` varchar(100) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `price` bigint NOT NULL,
+  `image` varchar(500) DEFAULT NULL,
+  `quantity` int NOT NULL DEFAULT '1',
+  PRIMARY KEY (`id`),
+  KEY `order_id` (`order_id`),
+  CONSTRAINT `order_items_ibfk_1` FOREIGN KEY (`order_id`) REFERENCES `orders` (`order_id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `order_items`
+--
+
+LOCK TABLES `order_items` WRITE;
+/*!40000 ALTER TABLE `order_items` DISABLE KEYS */;
+INSERT INTO `order_items` VALUES (1,'VF1775466761643','3','VinFast Evo Grand Lite',22000000,'https://unsizeable-cedrick-envyingly.ngrok-free.dev/images/motorbike/VinFast%20Evo%20Grand%20Lite.png',1),(2,'VF1775568673286','car_4','Vinfast Limo Green',749000000,'https://unsizeable-cedrick-envyingly.ngrok-free.dev/images/car/Vinfast%20Limo%20Green.jpg',1),(3,'VF1775580831823','1','VinFast Evo 200 Lite',22000000,'motorbike/VinFast%20Evo%20200%20Lite.jpg',1);
+/*!40000 ALTER TABLE `order_items` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `orders`
+--
+
+DROP TABLE IF EXISTS `orders`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `orders` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `order_id` varchar(50) NOT NULL,
+  `user_id` varchar(100) NOT NULL,
+  `sub_total` bigint NOT NULL,
+  `discount` bigint DEFAULT '0',
+  `final_price` bigint NOT NULL,
+  `status` varchar(50) DEFAULT 'Đang xử lý',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `order_id` (`order_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `orders`
+--
+
+LOCK TABLES `orders` WRITE;
+/*!40000 ALTER TABLE `orders` DISABLE KEYS */;
+INSERT INTO `orders` VALUES (1,'VF1775466761643','user_test_123',22000000,100000,21900000,'Đang xử lý','2026-04-06 09:12:41'),(2,'VF1775568673286','user_test_123',749000000,0,749000000,'Đang xử lý','2026-04-07 13:31:13'),(3,'VF1775580831823','user_test_123',22000000,100000,21900000,'Đang xử lý','2026-04-07 16:53:51');
+/*!40000 ALTER TABLE `orders` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -190,4 +314,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-03-13  6:11:27
+-- Dump completed on 2026-04-09 13:23:13
