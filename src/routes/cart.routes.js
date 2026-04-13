@@ -7,20 +7,18 @@ const db = require("../config/db");
 router.get("/:userId", async (req, res) => {
   try {
     const [items] = await db.query(
-      `
-      SELECT
-        product_id AS productId,
-        name,
-        price,
-        image,
-        quantity,
-        color_id AS colorId,
-        color_name AS colorName,
-        color_value AS colorValue
-      FROM cart
-      WHERE user_id = ?
-      ORDER BY created_at DESC
-      `,
+      `SELECT
+         product_id as productId,
+         name,
+         price,
+         image,
+         quantity,
+         color_id as colorId,
+         color_name as colorName,
+         color_value as colorValue
+       FROM cart
+       WHERE user_id = ?
+       ORDER BY created_at DESC`,
       [req.params.userId]
     );
 
@@ -32,58 +30,34 @@ router.get("/:userId", async (req, res) => {
 
 // POST /api/cart/add — thêm sản phẩm
 router.post("/add", async (req, res) => {
-  const {
-    userId,
-    productId,
-    name,
-    price,
-    image,
-    quantity = 1,
-    colorId = null,
-    colorName = null,
-    colorValue = null,
-  } = req.body;
+  let {
+  userId,
+  productId,
+  name,
+  price,
+  image,
+  quantity = 1,
+  colorId = null,
+  colorName = null,
+  colorValue = null,
+} = req.body;
+
+if (colorId == null) colorId = 0;
+if (!colorName) colorName = "default";
 
   if (!userId || !productId) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Thiếu thông tin" });
+    return res.status(400).json({ success: false, message: "Thiếu thông tin" });
   }
 
   try {
     await db.query(
-      `
-      INSERT INTO cart (
-        user_id,
-        product_id,
-        name,
-        price,
-        image,
-        quantity,
-        color_id,
-        color_name,
-        color_value
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON DUPLICATE KEY UPDATE
-        quantity = quantity + VALUES(quantity),
-        price = VALUES(price),
-        image = VALUES(image),
-        color_name = VALUES(color_name),
-        color_value = VALUES(color_value),
-        updated_at = NOW()
-      `,
-      [
-        userId,
-        productId,
-        name,
-        price,
-        image,
-        quantity,
-        colorId,
-        colorName,
-        colorValue,
-      ]
+      `INSERT INTO cart
+        (user_id, product_id, name, price, image, quantity, color_id, color_name, color_value)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+         quantity = quantity + VALUES(quantity),
+         updated_at = NOW()`,
+      [userId, productId, name, price, image, quantity, colorId, colorName, colorValue]
     );
 
     res.json({ success: true, message: "Đã thêm vào giỏ hàng" });
@@ -99,29 +73,19 @@ router.post("/update-quantity", async (req, res) => {
   try {
     if (quantity <= 0) {
       await db.query(
-        `
-        DELETE FROM cart
-        WHERE user_id = ?
-          AND product_id = ?
-          AND (
-            (color_id IS NULL AND ? IS NULL)
-            OR color_id = ?
-          )
-        `,
+        `DELETE FROM cart
+         WHERE user_id = ?
+           AND product_id = ?
+           AND ((color_id IS NULL AND ? IS NULL) OR color_id = ?)`,
         [userId, productId, colorId, colorId]
       );
     } else {
       await db.query(
-        `
-        UPDATE cart
-        SET quantity = ?, updated_at = NOW()
-        WHERE user_id = ?
-          AND product_id = ?
-          AND (
-            (color_id IS NULL AND ? IS NULL)
-            OR color_id = ?
-          )
-        `,
+        `UPDATE cart
+         SET quantity = ?, updated_at = NOW()
+         WHERE user_id = ?
+           AND product_id = ?
+           AND ((color_id IS NULL AND ? IS NULL) OR color_id = ?)`,
         [quantity, userId, productId, colorId, colorId]
       );
     }
@@ -138,15 +102,10 @@ router.post("/remove-item", async (req, res) => {
 
   try {
     await db.query(
-      `
-      DELETE FROM cart
-      WHERE user_id = ?
-        AND product_id = ?
-        AND (
-          (color_id IS NULL AND ? IS NULL)
-          OR color_id = ?
-        )
-      `,
+      `DELETE FROM cart
+       WHERE user_id = ?
+         AND product_id = ?
+         AND ((color_id IS NULL AND ? IS NULL) OR color_id = ?)`,
       [userId, productId, colorId, colorId]
     );
 

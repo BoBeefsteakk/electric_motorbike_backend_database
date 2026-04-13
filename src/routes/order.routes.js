@@ -1,91 +1,234 @@
-// src/routes/order.routes.js
 const express = require("express");
-const router  = express.Router();
-const db      = require("../config/db");
+const router = express.Router();
+const db = require("../config/db");
 
-// POST /api/orders/create — tạo đơn hàng từ checkout
+// Tạo đơn hàng
 router.post("/create", async (req, res) => {
   const { userId, cartItems, subTotal, discount = 0, finalPrice } = req.body;
-  if (!userId || !cartItems?.length) 
-    return res.status(400).json({ success: false, message: "Thiếu thông tin đơn hàng" });
+
+  if (!userId || !cartItems || !Array.isArray(cartItems) || cartItems.length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Thiếu thông tin đơn hàng",
+    });
+  }
 
   const orderId = `VF${Date.now()}`;
   const conn = await db.getConnection();
+
   try {
     await conn.beginTransaction();
 
-    // Tạo đơn hàng
     await conn.query(
-      "INSERT INTO orders (order_id, user_id, sub_total, discount, final_price) VALUES (?, ?, ?, ?, ?)",
-      [orderId, userId, subTotal, discount, finalPrice]
+      `
+        INSERT INTO orders (
+          order_id,
+          user_id,
+          sub_total,
+          discount,
+          final_price,
+          status
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
+      `,
+      [orderId, userId, subTotal, discount, finalPrice, "Đang xử lý"],
     );
 
-    // Tạo order items
     for (const item of cartItems) {
       await conn.query(
-        "INSERT INTO order_items (order_id, product_id, name, price, image, quantity) VALUES (?, ?, ?, ?, ?, ?)",
-        [orderId, item.productId, item.name, item.price, item.image || "", item.quantity]
+        `
+          INSERT INTO order_items (
+            order_id,
+            product_id,
+            name,
+            price,
+            image,
+            quantity
+          )
+          VALUES (?, ?, ?, ?, ?, ?)
+        `,
+        [
+          orderId,
+          item.productId || item.id,
+          item.name,
+          item.price,
+          item.image || "",
+          item.quantity || 1,
+        ],
       );
     }
 
-    // Xoá các item đã mua khỏi giỏ hàng
     for (const item of cartItems) {
-      await conn.query("DELETE FROM cart WHERE user_id = ? AND product_id = ?", [userId, item.productId]);
+      await conn.query(
+        `DELETE FROM cart WHERE user_id = ? AND product_id = ?`,
+        [userId, item.productId || item.id],
+      );
     }
 
     await conn.commit();
-    res.json({ success: true, orderId });
+
+    return res.json({
+      success: true,
+      message: "Tạo đơn hàng thành công",
+      orderId,
+    });
   } catch (err) {
     await conn.rollback();
-    res.status(500).json({ success: false, message: err.message });
+    return res.status(500).json({
+      success: false,
+      message: err.message || "Lỗi server khi tạo đơn hàng",
+    });
   } finally {
     conn.release();
   }
 });
 
-// GET /api/orders/user/:userId — lấy danh sách đơn hàng
-router.get("/user/:userId", async (req, res) => {
+// Hủy đơn hàng
+router.post("/cancel", async (req, res) => {
+  const { orderId, userId } = req.body;
+
+  if (!orderId || !userId) {
+    return res.status(400).json({
+      success: false,
+      message: "Thiếu orderId hoặc userId",
+    });
+  }
+
   try {
-    const [orderRows] = await db.query(
-      "SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC",
-      [req.params.userId]
+    const [result] = await db.query(
+      `
+        UPDATE orders
+        SET status = 'Đã hủy'
+        WHERE order_id = ? AND user_id = ? AND status <> 'Đã hủy'
+      `,
+      [orderId, userId],
     );
 
-    // Lấy items cho từng đơn
-    const orders = await Promise.all(orderRows.map(async (order) => {
-        const [items] = await db.query(
-            "SELECT * FROM order_items WHERE order_id = ?",
-            [order.order_id]
-        );
-        return {
-            _id:        order.id,
-            orderId:    order.order_id,
-            finalPrice: order.final_price,
-            status:     order.status,
-            createdAt:  order.created_at,
-            items,
-        };
-        }));
+    if (result.affectedRows === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Không tìm thấy đơn hàng phù hợp hoặc đơn đã bị hủy",
+      });
+    }
 
-    res.json({ success: true, data: orders });
-  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+    return res.json({
+      success: true,
+      message: "Hủy đơn hàng thành công",
+      data: {
+        orderId,
+        status: "Đã hủy",
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message || "Lỗi server khi hủy đơn hàng",
+    });
+  }
 });
 
-// GET /api/orders/:orderId — chi tiết 1 đơn
+// Lấy danh sách đơn hàng theo user
+router.get("/user/:userId", async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const [orders] = await db.query(
+      `
+        SELECT *
+        FROM orders
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+      `,
+      [userId],
+    );
+
+    const formattedOrders = await Promise.all(
+      orders.map(async (order) => {
+        const [items] = await db.query(
+          `
+            SELECT *
+            FROM order_items
+            WHERE order_id = ?
+          `,
+          [order.order_id],
+        );
+
+        return {
+          id: order.id,
+          orderId: order.order_id,
+          userId: order.user_id,
+          subTotal: order.sub_total,
+          discount: order.discount,
+          finalPrice: order.final_price,
+          status: order.status,
+          createdAt: order.created_at,
+          items,
+        };
+      }),
+    );
+
+    return res.json({
+      success: true,
+      data: formattedOrders,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message || "Lỗi server khi lấy danh sách đơn hàng",
+    });
+  }
+});
+
+// Lấy chi tiết 1 đơn hàng
 router.get("/:orderId", async (req, res) => {
+  const { orderId } = req.params;
+
   try {
     const [[order]] = await db.query(
-      "SELECT * FROM orders WHERE order_id = ?",
-      [req.params.orderId]
+      `
+        SELECT *
+        FROM orders
+        WHERE order_id = ?
+      `,
+      [orderId],
     );
-    if (!order) return res.status(404).json({ success: false, message: "Không tìm thấy đơn hàng" });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy đơn hàng",
+      });
+    }
 
     const [items] = await db.query(
-      "SELECT * FROM order_items WHERE order_id = ?",
-      [req.params.orderId]
+      `
+        SELECT *
+        FROM order_items
+        WHERE order_id = ?
+      `,
+      [orderId],
     );
-    res.json({ success: true, data: { ...order, items } });
-  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+
+    return res.json({
+      success: true,
+      data: {
+        id: order.id,
+        orderId: order.order_id,
+        userId: order.user_id,
+        subTotal: order.sub_total,
+        discount: order.discount,
+        finalPrice: order.final_price,
+        status: order.status,
+        createdAt: order.created_at,
+        items,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message || "Lỗi server khi lấy chi tiết đơn hàng",
+    });
+  }
 });
 
 module.exports = router;
