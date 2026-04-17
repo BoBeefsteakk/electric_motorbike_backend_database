@@ -6,7 +6,12 @@ const db = require("../config/db");
 router.post("/create", async (req, res) => {
   const { userId, cartItems, subTotal, discount = 0, finalPrice } = req.body;
 
-  if (!userId || !cartItems || !Array.isArray(cartItems) || cartItems.length === 0) {
+  if (
+    !userId ||
+    !cartItems ||
+    !Array.isArray(cartItems) ||
+    cartItems.length === 0
+  ) {
     return res.status(400).json({
       success: false,
       message: "Thiếu thông tin đơn hàng",
@@ -123,6 +128,62 @@ router.post("/cancel", async (req, res) => {
     return res.status(500).json({
       success: false,
       message: err.message || "Lỗi server khi hủy đơn hàng",
+    });
+  }
+});
+
+router.delete("/:orderId", async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { userId } = req.query;
+
+    if (!orderId || !userId) {
+      return res.status(400).json({
+        success: false,
+        message: "Thiếu mã đơn hàng hoặc userId",
+      });
+    }
+
+    const [orders] = await db.query(
+      `
+        SELECT id, order_id, user_id, status
+        FROM orders
+        WHERE order_id = ? AND user_id = ?
+        LIMIT 1
+      `,
+      [orderId, userId],
+    );
+
+    if (!orders.length) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy đơn hàng",
+      });
+    }
+
+    const order = orders[0];
+
+    if (order.status !== "Đã hủy") {
+      return res.status(400).json({
+        success: false,
+        message: "Chỉ có thể xóa đơn hàng đã hủy",
+      });
+    }
+
+    await db.query(`DELETE FROM order_items WHERE order_id = ?`, [
+      order.order_id,
+    ]);
+
+    await db.query(`DELETE FROM orders WHERE id = ?`, [order.id]);
+
+    return res.json({
+      success: true,
+      message: "Xóa đơn hàng thành công",
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message || "Lỗi server khi xóa đơn hàng",
     });
   }
 });
