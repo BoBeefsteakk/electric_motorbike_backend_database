@@ -16,6 +16,7 @@ const orderRoutes      = require("./routes/order.routes");
 const newsRoutes = require("./routes/news.routes");
 const featuredRoutes = require("./routes/featured.routes");
 const categoryRoutes = require("./routes/category.routes");
+const adminProductRoutes = require("./routes/adminProduct.routes");
 
 const app = express();
 app.use(cors());
@@ -33,6 +34,7 @@ app.use("/api/cart",        cartRoutes);
 app.use("/api/orders",      orderRoutes);
 app.use("/api/news", newsRoutes);
 app.use("/api/categories", categoryRoutes);
+app.use("/api/admin/products", adminProductRoutes);
 
 app.post("/register", async (req, res) => {
   const { account, password } = req.body;
